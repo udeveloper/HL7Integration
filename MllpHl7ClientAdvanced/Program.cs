@@ -60,6 +60,7 @@ namespace MllpHl7ClientAdvanced
                     Console.WriteLine("Data was sent data to server successfully....");
                                        
                     var receivedMessage = GetResponse(networkStream);
+                                       
 
                     using (StreamWriter writer = new StreamWriter("N:\\Response.txt", true))
                     {

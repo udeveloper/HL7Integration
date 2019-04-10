@@ -1,4 +1,6 @@
-﻿using System;
+﻿using NHapi.Base.Parser;
+using NHapi.Model.V25.Message;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -59,7 +61,7 @@ namespace HL7TcpServer
 
             //the argument passed to the thread delegate is the incoming tcp client connection
             var tcpClientConnection = (TcpClient)argumentPassedForThreadProcessing;
-            Console.WriteLine("A client connection was initiated from " + tcpClientConnection.Client.RemoteEndPoint);
+            Console.WriteLine("A client connection was initiated from localhost " + tcpClientConnection.Client.RemoteEndPoint);
 
             var receivedByteBuffer = new byte[200];
             var netStream = tcpClientConnection.GetStream();
@@ -128,12 +130,12 @@ namespace HL7TcpServer
                 throw new ApplicationException("Invalid HL7 message for parsing operation. Please check your inputs");
 
             //retrieve the message control ID of the incoming HL7 message 
-            var messageControlId = GetMessageControlID(incomingHl7Message);
+            var messageControlId = GetMessageControlID(incomingHl7Message);            
 
             //build an acknowledgement message and include the control ID with it
             var ackMessage = new StringBuilder();
             ackMessage = ackMessage.Append(START_OF_BLOCK)
-                .Append("MSH|^~\\&|||||||ACK||P|2.2")
+                .Append("MSH|^~\\&|||||||ACK||P|2.5")
                 .Append(CARRIAGE_RETURN)
                 .Append("MSA|AA|")
                 .Append(messageControlId)
