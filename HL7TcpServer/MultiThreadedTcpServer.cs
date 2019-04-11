@@ -1,7 +1,12 @@
-﻿using NHapi.Base.Parser;
+﻿using HL7NhapiClient.Helpers;
+using NHapi.Base.Model;
+using NHapi.Base.Parser;
+using NHapi.Model.V25.Datatype;
 using NHapi.Model.V25.Message;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -19,6 +24,7 @@ namespace HL7TcpServer
         private  char CARRIAGE_RETURN = (char)13;
         private static int MESSAGE_CONTROL_ID_LOCATION = 9;
         private static char FIELD_DELIMITER = '|';
+        private string _extractedPdfOutputDirectory = "N:\\HL7TestOutputs";
 
         public void StartTcpServer(int portNumberToListenOn)
         {
@@ -60,8 +66,9 @@ namespace HL7TcpServer
         {
 
             //the argument passed to the thread delegate is the incoming tcp client connection
+            var guidConnection = Guid.NewGuid();
             var tcpClientConnection = (TcpClient)argumentPassedForThreadProcessing;
-            Console.WriteLine("A client connection was initiated from localhost " + tcpClientConnection.Client.RemoteEndPoint);
+            Console.WriteLine($"A client connection was initiated from localhost {tcpClientConnection.Client.RemoteEndPoint} con id {guidConnection}");
 
             var receivedByteBuffer = new byte[200];
             var netStream = tcpClientConnection.GetStream();
@@ -87,7 +94,10 @@ namespace HL7TcpServer
                         {
                             //if both start and end of block are recognized in the data transmitted, then extract the entire message
                             var hl7MessageData = hl7Data.Substring(startOfMllpEnvelope + 1, end - startOfMllpEnvelope);
+                           
 
+                           GetBinaryDataMessageHL7(hl7MessageData);
+                            
                             //create a HL7 acknowledgement message
                             var ackMessage = GetSimpleAcknowledgementMessage(hl7MessageData);
 
@@ -99,7 +109,7 @@ namespace HL7TcpServer
                             if (netStream.CanWrite)
                             {
                                 netStream.Write(buffer, 0, buffer.Length);
-
+                                netStream.Flush();
                                 Console.WriteLine("Ack message was sent back to the client...");
                             }
                         }
@@ -167,6 +177,84 @@ namespace HL7TcpServer
             }
 
             return string.Empty; //you can also throw an exception here if you wish
+        }
+
+        private void GetBinaryDataMessageHL7(string hl7MessageData)
+        {
+            
+            var messageHL7Parsed = new PipeParser().Parse(hl7MessageData);
+
+            if( messageHL7Parsed is ORU_R01)
+            {
+                var oruMessage = (ORU_R01)messageHL7Parsed;
+
+                if (oruMessage != null)
+                {
+                    // Display the updated HL7 message using Pipe delimited format
+                    LogToDebugConsole("Parsed HL7 Message:");
+                    LogToDebugConsole(new PipeParser().Encode(messageHL7Parsed));
+
+                    var encapsulatedPdfDataInBase64Format = ExtractEncapsulatedPdfDataInBase64Format(oruMessage);
+
+                    //if no encapsulated data was found, you can cease operation
+                    if (encapsulatedPdfDataInBase64Format == null) return;
+
+                    var extractedPdfByteData = GetBase64DecodedPdfByteData(encapsulatedPdfDataInBase64Format);
+
+                    WriteExtractedPdfByteDataToFile(extractedPdfByteData);
+                }
+            }
+          
+            
+
+        }
+
+        private byte[] GetBase64DecodedPdfByteData(ED encapsulatedPdfDataInBase64Format)
+        {
+            var helpeB64 = new Base64Helper();
+
+            LogToDebugConsole("Extracting PDF data stored in Base-64 encoded form from OBX-5..");
+            var base64EncodedByteData = encapsulatedPdfDataInBase64Format.Data.Value;
+            var extractedPdfByteData = helpeB64.ConvertFromBase64String(base64EncodedByteData);
+            return extractedPdfByteData;
+        }
+
+        private ED ExtractEncapsulatedPdfDataInBase64Format(ORU_R01 oruMessage)
+        {            
+            //start retrieving the OBX segment data to get at the PDF report content
+            LogToDebugConsole("Extracting message data from parsed message..");
+            var orderObservation = oruMessage.GetPATIENT_RESULT().GetORDER_OBSERVATION();
+            var observation = orderObservation.GetOBSERVATION(0);
+            var obxSegment = observation.OBX;
+
+            var encapsulatedPdfDataInBase64Format = obxSegment.GetObservationValue(0).Data as ED;            
+            return encapsulatedPdfDataInBase64Format;
+        }
+
+        private  void WriteExtractedPdfByteDataToFile(byte[] extractedPdfByteData)
+        {
+            LogToDebugConsole($"Creating output directory at '{_extractedPdfOutputDirectory}'..");
+
+            if (!Directory.Exists(_extractedPdfOutputDirectory))
+                Directory.CreateDirectory(_extractedPdfOutputDirectory);
+
+            var pdfOutputFile = Path.Combine(_extractedPdfOutputDirectory, Guid.NewGuid() + ".pdf");
+            LogToDebugConsole(
+                $"Writing the extracted PDF data to '{pdfOutputFile}'. You should be able to see the decoded PDF content..");
+            try
+            {
+                File.WriteAllBytes(pdfOutputFile, extractedPdfByteData);
+            }
+            catch (Exception ex)
+            {
+                LogToDebugConsole("Extraction operation was successfully completed.. - " + ex.Message);
+            }
+                     
+        }
+
+        private static void LogToDebugConsole(string informationToLog)
+        {
+            Debug.WriteLine(informationToLog);
         }
 
     }

@@ -123,14 +123,32 @@
   <ItemGroup>
     <Compile Include="AdtMessageFactory.cs" />
     <Compile Include="Builders\AdtA01MessageBuilder.cs" />
+    <Compile Include="Builders\OruR01MessageBuilder.cs" />
     <Compile Include="CustomSegment\ADT_A01.cs" />
     <Compile Include="CustomSegment\ZPV.cs" />
+    <Compile Include="Helpers\Base64Helper.cs" />
+    <Compile Include="Helpers\TerserHelper.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+    <None Include="Test Files\Factura Servicios Profesionales  SONDA 2019- 15032019.pdf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Test Files\FHIR-Fundamentals_2019.pdf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Test Files\Java Senior.pdf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Test Files\Sample Pathology Lab Report.pdf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Test Files\Scrum Master URIEL OLAYA.pdf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

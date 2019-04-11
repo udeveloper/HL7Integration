@@ -10,28 +10,129 @@ using System.Threading.Tasks;
 using NHapiTools.Base.Net;
 using NHapi.Model.V25.Message;
 using NHapi.Base.Model;
+using ADT_A01 = NHapi.Model.V23.Message.ADT_A01;
+using NHapi.Base.Util;
+using HL7NhapiClient.Helpers;
 
 namespace HL7NhapiClient
 {
     class Program
     {
         private static int PORT_NUMBER = 1080;
+        
         static void Main(string[] args)
         {
             
             try
             {
+                // create a new MLLP client over the specified port (note this class is from NHAPI Tools)
+                //Note that using higher level encodings such as UTF-16 is not recommended due to conflict with
+                //MLLP wrapping characters
 
+                //var connection = new SimpleMLLPClient("localhost", PORT_NUMBER, Encoding.UTF8);
+
+                for (int i=0; i<=4;i++)
+                {
+                    Stopwatch watch = new Stopwatch();
+                    watch.Start();
+                    System.Threading.Thread.Sleep(3000);
+                    SendBinaryDataB64InMessageHL7(new SimpleMLLPClient("localhost", PORT_NUMBER, Encoding.UTF8));
+                    watch.Stop();
+                    Console.WriteLine($"Tiempo Transcurrido Mensaje # {i} + " + watch.Elapsed.TotalSeconds);
+                }
+
+                
+
+               // connection.Disconnect();
+                
+                //TerserMessageHL7();
                 //ParserCustomMessageHL7();
                 //ParserMessageHL7();
-                // SendMessageHL7();
-                // CreateMessagesParser(adtMessage);
+                //SendMessageHL7();
+                //CreateMessagesParser(adtMessage);
 
             }
             catch (Exception e)
             {
                 LogToDebugConsole($"Error occured while creating HL7 message {e.Message}");
             }
+        }
+
+        private static void SendBinaryDataB64InMessageHL7(SimpleMLLPClient connection)
+        {
+            // create the HL7 message
+            // this OruMessageFactory class is not from NHAPI but my own wrapper class
+            var oruMessage = AdtMessageFactory.CreateMessage("R01");
+            
+            // send the previously created HL7 message over the connection established
+            var pipeParser = new PipeParser();
+            LogToDebugConsole("Sending ORU R01 message:" + "\n" + pipeParser.Encode(oruMessage));
+            var responseMessage = connection.SendHL7Message(oruMessage);
+
+            // display the message response received from the remote party
+            var responseString = pipeParser.Encode(responseMessage);
+            LogToDebugConsole("Received response:\n" + responseString);
+
+           connection.Disconnect();
+           
+        }
+
+        private static void TerserMessageHL7()
+        {
+            var stringMessage = File.ReadAllText(
+                                @"N:\hl7-master\hl7-master\Test HL7 Message Files\FileWithObservationResultMessage.txt");
+
+            // instantiate a PipeParser, which handles the normal HL7 encoding
+            var pipeParser = new PipeParser();
+
+            // parse the message string into a message object
+            var orderResultHl7Message = pipeParser.Parse(stringMessage);
+
+            // create a terser object instance by wrapping it around the message object
+            var terser = new Terser(orderResultHl7Message);
+
+            var terserHelper = new TerserHelper(terser);
+
+            var terserExpression = "/.MSH-6";
+            var dataRetrieved = terserHelper.GetData(terserExpression);
+            LogToDebugConsole($"Field 6 of MSH segment using expression '{terserExpression}' was '{dataRetrieved}'");
+
+            terserExpression = "/.PID-5-2"; // notice the /. to indicate relative position to root node
+            dataRetrieved = terserHelper.GetData(terserExpression);
+            LogToDebugConsole($"Field 5 and Component 2 of the PID segment using expression '{terserExpression}' was {dataRetrieved}'");
+
+            terserExpression = "/.*ID-5-2";
+            dataRetrieved = terserHelper.GetData(terserExpression);
+            LogToDebugConsole($"Field 5 and Component 2 of the PID segment using wildcard-based expression '{terserExpression}' was '{dataRetrieved}'");
+
+            terserExpression = "/.P?D-5-2";
+            dataRetrieved = terserHelper.GetData(terserExpression);
+            LogToDebugConsole($"Field 5 and Component 2 of the PID segment using another wildcard-based expression '{terserExpression}' was '{dataRetrieved}'");
+
+
+            terserExpression = "/.PV1-9(1)"; // note: field repetitions are zero-indexed
+            dataRetrieved = terserHelper.GetData(terserExpression);
+            LogToDebugConsole($"2nd repetition of Field 9 and Component 1 for it in the PV1 segment using expression '{terserExpression}' was '{dataRetrieved}'");
+
+            terserExpression = "/RESPONSE/PATIENT/PID-5-1";
+            dataRetrieved = terserHelper.GetData(terserExpression);
+            LogToDebugConsole($"Terser expression  '{terserExpression}' yielded '{dataRetrieved}'");
+
+            terserExpression = "/RESPONSE/PATIENT/VISIT/PV1-9-3";
+            dataRetrieved = terserHelper.GetData(terserExpression);
+            LogToDebugConsole($"Terser expression '{terserExpression}' yielded '{dataRetrieved}'");
+
+            terserExpression = "/RESPONSE/ORDER_OBSERVATION(0)/ORC-12-3";
+            dataRetrieved = terserHelper.GetData(terserExpression);
+            LogToDebugConsole($"Terser expression '{terserExpression}' yielded '{dataRetrieved}'");
+
+            //let us now try a set operation using the terser
+            terserExpression = "/.OBSERVATION(0)/NTE-3";
+            terserHelper.SetData(terserExpression, "This is our override value using the setter");
+            LogToDebugConsole("Set the data for second repetition of the NTE segment and its Third field..");
+
+            LogToDebugConsole("\nWill display our modified message below \n");
+            LogToDebugConsole(pipeParser.Encode(orderResultHl7Message));
         }
 
         private static void ParserCustomMessageHL7()
@@ -56,25 +157,28 @@ namespace HL7NhapiClient
 
         private static void ParserMessageHL7()
         {
-            const string messageString = "MSH|^~\\&|SENDING_APPLICATION|SENDING_FACILITY|RECEIVING_APPLICATION|RECEIVING_FACILITY|20110614075841||ACK|1407511|P|2.5||||||\r\n" +
+            string messageString ="MSH|^~\\&|SENDING_APPLICATION|SENDING_FACILITY|RECEIVING_APPLICATION|RECEIVING_FACILITY|20110614075841||ACK|1407511|P|2.5||||||\r\n" +
                                         "MSA|AA|1407511|Success||";
+
+            messageString= File.ReadAllText(@"N:\hl7-master\hl7-master\Test HL7 Message Files\FileWithNonConformingAdtA01Message.txt");
+
             var pipeParser = new PipeParser();
             // parse the string format message into a message object HL7 Estandar
             var hl7Message = pipeParser.Parse(messageString);
 
             //cast to ACK message to get access to ACK message data
-            var ackMessage = (ACK)hl7Message;
+            var ackMessage = (ADT_A01)hl7Message;
 
             if (ackMessage != null)
             {
                 var mshSegment = ackMessage.MSH;
 
-                LogToDebugConsole("Message Type is " + mshSegment.MessageType.MessageCode.Value);
+                LogToDebugConsole("Message Type is " + mshSegment.MessageType.MessageType.Value);
                 LogToDebugConsole("Message Control Id  " + mshSegment.MessageControlID.Value);
-                LogToDebugConsole("Message Timestamp is " + mshSegment.DateTimeOfMessage.Time.GetAsDate());
+                LogToDebugConsole("Message Timestamp is " + mshSegment.DateTimeOfMessage.TimeOfAnEvent.GetAsDate());
                 LogToDebugConsole("Sending Facility is " + mshSegment.SendingFacility.NamespaceID.Value);
 
-                ackMessage.MSA.AcknowledgmentCode.Value = "AR";
+                //ackMessage.MSA.AcknowledgmentCode.Value = "AR";
             }
 
             // Display the updated HL7 message using Pipe delimited format
