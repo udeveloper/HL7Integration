@@ -13,6 +13,7 @@ using NHapi.Base.Model;
 using ADT_A01 = NHapi.Model.V23.Message.ADT_A01;
 using NHapi.Base.Util;
 using HL7NhapiClient.Helpers;
+using NHapiTools.Base.Util;
 
 namespace HL7NhapiClient
 {
@@ -29,14 +30,14 @@ namespace HL7NhapiClient
                 //Note that using higher level encodings such as UTF-16 is not recommended due to conflict with
                 //MLLP wrapping characters
 
-                //var connection = new SimpleMLLPClient("localhost", PORT_NUMBER, Encoding.UTF8);
+                var connection = new SimpleMLLPClient("13.82.236.66", PORT_NUMBER, Encoding.UTF8);
 
-                for (int i=0; i<=4;i++)
+                for (int i=0; i<=5;i++)
                 {
                     Stopwatch watch = new Stopwatch();
                     watch.Start();
                     System.Threading.Thread.Sleep(3000);
-                    SendBinaryDataB64InMessageHL7(new SimpleMLLPClient("localhost", PORT_NUMBER, Encoding.UTF8));
+                    SendBinaryDataB64InMessageHL7(connection); // new SimpleMLLPClient("localhost", PORT_NUMBER, Encoding.UTF8));
                     watch.Stop();
                     Console.WriteLine($"Tiempo Transcurrido Mensaje # {i} + " + watch.Elapsed.TotalSeconds);
                 }
@@ -66,14 +67,17 @@ namespace HL7NhapiClient
             
             // send the previously created HL7 message over the connection established
             var pipeParser = new PipeParser();
-            LogToDebugConsole("Sending ORU R01 message:" + "\n" + pipeParser.Encode(oruMessage));
+            LogToDebugConsole($"Sending  :" + "\n" + pipeParser.Encode(oruMessage));
             var responseMessage = connection.SendHL7Message(oruMessage);
+
+            //var ackError=  new Ack("HL7ServerIntegration360","Development").MakeACK(oruMessage, AckTypes.AE, "Error por malos datos");
+            //LogToDebugConsole("Received response:\n" + pipeParser.Encode(ackError));
 
             // display the message response received from the remote party
             var responseString = pipeParser.Encode(responseMessage);
             LogToDebugConsole("Received response:\n" + responseString);
 
-           connection.Disconnect();
+           //connection.Disconnect();
            
         }
 

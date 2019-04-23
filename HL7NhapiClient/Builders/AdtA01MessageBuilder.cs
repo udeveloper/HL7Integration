@@ -43,8 +43,8 @@ namespace HL7NhapiClient.Builders
             mshSegment.DateTimeOfMessage.Time.Value = currentDateTimeString;
             mshSegment.MessageControlID.Value = GetSequenceNumber();
             mshSegment.MessageType.MessageCode.Value = "ADT";
-            mshSegment.MessageType.TriggerEvent.Value = "001";
-            mshSegment.VersionID.VersionID.Value = "2.3";
+            mshSegment.MessageType.TriggerEvent.Value = "A01";
+            mshSegment.VersionID.VersionID.Value = "2.5";
             mshSegment.ProcessingID.ProcessingID.Value = "P";
             
         }

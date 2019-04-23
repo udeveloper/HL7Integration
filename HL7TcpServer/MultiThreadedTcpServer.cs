@@ -70,7 +70,7 @@ namespace HL7TcpServer
             var tcpClientConnection = (TcpClient)argumentPassedForThreadProcessing;
             Console.WriteLine($"A client connection was initiated from localhost {tcpClientConnection.Client.RemoteEndPoint} con id {guidConnection}");
 
-            var receivedByteBuffer = new byte[200];
+            var receivedByteBuffer = new byte[10025];
             var netStream = tcpClientConnection.GetStream();
 
             try
@@ -94,12 +94,14 @@ namespace HL7TcpServer
                         {
                             //if both start and end of block are recognized in the data transmitted, then extract the entire message
                             var hl7MessageData = hl7Data.Substring(startOfMllpEnvelope + 1, end - startOfMllpEnvelope);
-                           
 
-                           GetBinaryDataMessageHL7(hl7MessageData);
+                           Console.WriteLine(hl7MessageData);
+
+                           //GetBinaryDataMessageHL7(hl7MessageData);
                             
                             //create a HL7 acknowledgement message
                             var ackMessage = GetSimpleAcknowledgementMessage(hl7MessageData);
+                            
 
                             Console.WriteLine(ackMessage);
 
